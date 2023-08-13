@@ -20,9 +20,15 @@ class DDBResourceInterface:
     
     tables: Tables
 
+class DDBClientInterface:
+
+    def describe_table(*args, **kwargs):
+        raise NotImplementedError("Method not implemented")
+
 
 class FlaskDDBVizConfig(BaseModel):
     ddb_resource: Any
+    ddb_client: Any
     allowed_tables: Optional[List[str]] = None
 
 def _big_scan(table: DDBTableInterface):
@@ -72,6 +78,10 @@ def _list_tables(flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_tables = ddb_tables if not allowed_tables else list(filter(lambda table: table in allowed_tables, ddb_tables))
 
     return {"items_count": len(tables_names), "tables": tables_names}, 200
+
+def _describe_table(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
+    ddb_client: DDBClientInterface = flask_ddb_viz_config.ddb_client
+    return ddb_client.describe_table(TableName=table_name)
    
 
 class FlaskDDBViz:
@@ -85,9 +95,15 @@ class FlaskDDBViz:
 
         def show_table_view_wrapper(table_name: str):
             return _show_table_view(table_name, flask_ddb_viz_config)
+
         def list_tables_wrapper():
             return _list_tables(flask_ddb_viz_config)
+
+        def describe_table_wrapper(table_name: str):
+            return _describe_table(table_name, flask_ddb_viz_config)
+
         app.add_url_rule("/ddb_table/<table_name>/records", view_func=show_table_view_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_tables/list", view_func=list_tables_wrapper, methods=["GET"])
+        app.add_url_rule("/ddb_table/<table_name>/describe", view_func=describe_table_wrapper, methods=["GET"])
     
 
