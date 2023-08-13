@@ -54,6 +54,21 @@ def _big_scan(table: DDBTableInterface):
 def _get_all(table: DDBTableInterface):
     return _big_scan(table)
 
+def _scan_page(table_name: str, last_evaluated_key: str, flask_ddb_viz_config: FlaskDDBVizConfig):
+    ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
+    ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
+    table_names = [table.name for table in ddb_tables]
+    if table_name not in table_names:
+        return {"error": "Table does not exist"}, 404
+
+    allowed_tables = flask_ddb_viz_config.allowed_tables
+    if allowed_tables and table_name not in allowed_tables:
+        return {"error": "Table cannot be shown"}, 403
+
+    ddb_table: DDBTableInterface = ddb_resource.Table(table_name)
+    resultset = ddb_table.scan(ExclusiveStartKey=last_evaluated_key)["Items"] if last_evaluated_key else ddb_table.scan()["Items"]
+    return {"table_name": table_name, "items": resultset}
+
 #def _get_table_from_factory(table_name: str, ddb_table_factory: DDBTableFactory) -> TableConfig:
     #return list(filter(lambda table_config: table_config.table_name == table_name, ddb_table_factory.tables))[0]
 
@@ -82,7 +97,7 @@ def _list_tables(flask_ddb_viz_config: FlaskDDBVizConfig):
 def _describe_table(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_client: DDBClientInterface = flask_ddb_viz_config.ddb_client
     return ddb_client.describe_table(TableName=table_name)
-   
+    
 
 class FlaskDDBViz:
     
@@ -101,9 +116,11 @@ class FlaskDDBViz:
 
         def describe_table_wrapper(table_name: str):
             return _describe_table(table_name, flask_ddb_viz_config)
+        
+        def scan_page(table_name: str, last_evaluated_key: str):
+            return _scan_page(table_name, last_evaluated_key, flask_ddb_viz_config)
 
         app.add_url_rule("/ddb_table/<table_name>/records", view_func=show_table_view_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_tables/list", view_func=list_tables_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/<table_name>/describe", view_func=describe_table_wrapper, methods=["GET"])
-    
-
+        app.add_url_rule("/ddb_table/<table_name>/records/<last_evaluated_key>", view_func=scan_page, methods=["GET"])
