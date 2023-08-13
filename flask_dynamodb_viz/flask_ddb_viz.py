@@ -48,8 +48,8 @@ def _big_scan(table: DDBTableInterface):
 def _get_all(table: DDBTableInterface):
     return _big_scan(table)
 
-def _get_table_from_factory(table_name: str, ddb_table_factory: DDBTableFactory) -> TableConfig:
-    return list(filter(lambda table_config: table_config.table_name == table_name, ddb_table_factory.tables))[0]
+#def _get_table_from_factory(table_name: str, ddb_table_factory: DDBTableFactory) -> TableConfig:
+    #return list(filter(lambda table_config: table_config.table_name == table_name, ddb_table_factory.tables))[0]
 
 def _show_table_view(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
@@ -63,6 +63,15 @@ def _show_table_view(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_table: DDBTableInterface = ddb_resource.Table(table_name)
     resultset = _get_all(ddb_table)
     return {"table_name": table_name, "items": resultset}, 200
+
+def _list_tables(flask_ddb_viz_config: FlaskDDBVizConfig):
+    ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
+    ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
+    tables_names = [table.name for table in ddb_tables]
+    allowed_tables = flask_ddb_viz_config.allowed_tables
+    ddb_tables = ddb_tables if not allowed_tables else list(filter(lambda table: table in allowed_tables, ddb_tables))
+
+    return {"items_count": len(tables_names), "tables": tables_names}, 200
    
 
 class FlaskDDBViz:
@@ -72,7 +81,13 @@ class FlaskDDBViz:
             self.init_app(app)
     
     def init_app(self, app: Flask):
-        flask_ddb_viz_config: FlaskDDBVizConfig = app.config["FLASK_DBB_VIZ_CONFIG"]
-        app.add_url_rule("/ddb_table/<table_name>", view_func=lambda table_name: _show_table_view(table_name, flask_ddb_viz_config), methods=["GET"])
+        flask_ddb_viz_config: FlaskDDBVizConfig = app.config["FLASK_DDB_VIZ_CONFIG"]
+
+        def show_table_view_wrapper(table_name: str):
+            return _show_table_view(table_name, flask_ddb_viz_config)
+        def list_tables_wrapper():
+            return _list_tables(flask_ddb_viz_config)
+        app.add_url_rule("/ddb_table/<table_name>/records", view_func=show_table_view_wrapper, methods=["GET"])
+        app.add_url_rule("/ddb_tables/list", view_func=list_tables_wrapper, methods=["GET"])
     
 
