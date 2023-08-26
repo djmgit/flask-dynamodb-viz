@@ -1,6 +1,7 @@
 
-from typing import List, Any, Optional
-from pydantic import BaseModel
+import json
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel, parse_obj_as
 from flask import Flask
 
 class DDBTableInterface:
@@ -19,6 +20,14 @@ class DDBResourceInterface:
             pass
     
     tables: Tables
+
+class TableDescription(BaseModel):
+    ItemCount: int
+    TableArn: str
+    TableName: str
+    TableSizeBytes: int
+    TableStatus: str
+
 
 class DDBClientInterface:
 
@@ -65,9 +74,18 @@ def _scan_page(table_name: str, last_evaluated_key: str, flask_ddb_viz_config: F
     if allowed_tables and table_name not in allowed_tables:
         return {"error": "Table cannot be shown"}, 403
 
+    ddb_client: DDBClientInterface = flask_ddb_viz_config.ddb_client
+    table_description: Dict[str, Any] = ddb_client.describe_table(TableName=table_name)
+    table_description: TableDescription = parse_obj_as(TableDescription, table_description["Table"])
+
+    last_evaluated_key = json.loads(last_evaluated_key) if last_evaluated_key else None
+
     ddb_table: DDBTableInterface = ddb_resource.Table(table_name)
-    resultset = ddb_table.scan(ExclusiveStartKey=last_evaluated_key)["Items"] if last_evaluated_key else ddb_table.scan()["Items"]
-    return {"table_name": table_name, "items": resultset}
+    scanned_page: Dict[str, Any] = ddb_table.scan(ExclusiveStartKey=last_evaluated_key) if last_evaluated_key else ddb_table.scan()
+    resultset: List[Dict[str, Any]] = scanned_page["Items"]
+    return {"table_name": table_name, "items": resultset, "count": len(resultset),
+            "total_item_count": table_description.ItemCount, "table_size_bytes": table_description.TableSizeBytes,
+            "last_evaluated_key": scanned_page.get("LastEvaluatedKey", "")}
 
 #def _get_table_from_factory(table_name: str, ddb_table_factory: DDBTableFactory) -> TableConfig:
     #return list(filter(lambda table_config: table_config.table_name == table_name, ddb_table_factory.tables))[0]
@@ -83,7 +101,13 @@ def _show_table_view(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
         return {"error": "Table cannot be shown"}, 403
     ddb_table: DDBTableInterface = ddb_resource.Table(table_name)
     resultset = _get_all(ddb_table)
-    return {"table_name": table_name, "items": resultset}, 200
+
+    ddb_client: DDBClientInterface = flask_ddb_viz_config.ddb_client
+    table_description: Dict[str, Any] = ddb_client.describe_table(TableName=table_name)
+    table_description: TableDescription = parse_obj_as(TableDescription, table_description["Table"])
+
+    return {"table_name": table_name, "items": resultset, "total_item_count": table_description.ItemCount,
+            "table_size_bytes": table_description.TableSizeBytes}, 200
 
 def _list_tables(flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
@@ -121,6 +145,6 @@ class FlaskDDBViz:
             return _scan_page(table_name, last_evaluated_key, flask_ddb_viz_config)
 
         app.add_url_rule("/ddb_table/<table_name>/records", view_func=show_table_view_wrapper, methods=["GET"])
-        app.add_url_rule("/ddb_tables/list", view_func=list_tables_wrapper, methods=["GET"])
+        app.add_url_rule("/ddb_table/list", view_func=list_tables_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/<table_name>/describe", view_func=describe_table_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/<table_name>/records/<last_evaluated_key>", view_func=scan_page, methods=["GET"])
