@@ -1,8 +1,9 @@
 
 import json
+import os
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, parse_obj_as
-from flask import Flask
+from flask import Flask, render_template, send_file
 
 class DDBTableInterface:
     def scan(*args, **kwargs):
@@ -143,8 +144,26 @@ class FlaskDDBViz:
         
         def scan_page(table_name: str, last_evaluated_key: str):
             return _scan_page(table_name, last_evaluated_key, flask_ddb_viz_config)
+        
+        def show_tables():
+            ui_root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ui")
+            ret = send_file(os.path.join(ui_root, "list.html"))
+            ret.direct_passthrough = False
+            return ret
+
+        def static_files(directory, file):
+            if directory not in ["js", "css"]:
+                return "Unrecognised path", 404
+            ui_root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ui")
+            file_path = os.path.join(ui_root, directory, file)
+            ret = send_file(file_path)
+            ret.direct_passthrough = False
+            return ret
+        
 
         app.add_url_rule("/ddb_table/<table_name>/records", view_func=show_table_view_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/list", view_func=list_tables_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/<table_name>/describe", view_func=describe_table_wrapper, methods=["GET"])
         app.add_url_rule("/ddb_table/<table_name>/records/<last_evaluated_key>", view_func=scan_page, methods=["GET"])
+        app.add_url_rule("/ddb_table/ui/list", view_func=show_tables, methods=["GET"])
+        app.add_url_rule("/ddb_table/static/<directory>/<file>", view_func=static_files, methods=["GET"])
