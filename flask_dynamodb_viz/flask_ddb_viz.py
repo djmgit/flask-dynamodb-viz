@@ -156,6 +156,8 @@ class FlaskDDBViz:
                 return "Unrecognised path", 404
             ui_root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ui")
             file_path = os.path.join(ui_root, directory, file)
+            if not os.path.exists(file_path):
+                return "File not found", 404
             ret = send_file(file_path)
             ret.direct_passthrough = False
             return ret

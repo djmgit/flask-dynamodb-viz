@@ -7,16 +7,71 @@
         <script src="/ddb_table/static/js/angular.min.js"></script>
         <link rel="stylesheet" href="/ddb_table/static/css/bootstrap.min.css">
     </head>
-    <body ng-app="table-list" ng-controller="table-list">
-        <nav class="navbar navbar-default">
-            <div class="container-fluid">
-                <div class="navbar-header">
-                    <a class="navbar-brand" href="#">Flask DynamoDB Viz</a>
-                </div>
-                <ul class="nav navbar-nav">
-                    <li class="active"><a href="#">Table list</a></li>
-                </ul>
+    <body ng-app="table-list" ng-controller="table-list-ctrl">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="#">Flask DynamoDB Viz</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+              <div class="navbar-nav">
+                <a class="nav-item nav-link active" href="#">Table list <span class="sr-only">(current)</span></a>
+              </div>
             </div>
         </nav>
+
+        <div class="container">
+            <div class="list-of-tables">
+                <div id="accordion" ng-show="tablesListLoaded == true">
+                    <div ng-repeat="table in tables" class="card">
+                        <div class="card-header" id="heading-{{table}}">
+                            <h5 class="mb-0">
+                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}" aria-expanded="true" aria-controls="collapse-{{table}}">
+                                Collapsible {{table}}
+                                </button>
+                            </h5>
+                        </div>
+
+                        <div id="collapse-{{table}}" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
+                            <div class="card-body">
+                              <div ng-hide="tableDescriptions[table] == undefined">
+                                {{tableDescriptions[table]}}
+                              </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
+    <script>
+        $.noConflict();
+        var app = angular.module('table-list', []);
+        app.controller('table-list-ctrl', function ($scope, $http) {
+            $scope.tablesListLoaded = false;
+            $scope.tablesListIsLoading = false;
+            $scope.test="a";
+            $scope.tableDescriptions = {}
+
+            $scope.getTablesList = function() {
+                $scope.tablesListIsLoading = true;
+                $http.get("/ddb_table/list")
+                    .then(function (response) {
+                        $scope.tables = response.data["tables"];
+                        $scope.tablesListLoaded = true;
+                    });
+            }
+
+            $scope.getTableDescription = function(table) {
+                if (!$scope.tableDescriptions[table] == undefined) {
+                    return;
+                }
+                $http.get("/ddb_table/" + table + "/describe")
+                    .then(function (response) {
+                        $scope.tableDescriptions[table] = response.data["Table"];
+                    });
+            }
+            $scope.getTablesList();
+        });
+    </script>
 </html>
