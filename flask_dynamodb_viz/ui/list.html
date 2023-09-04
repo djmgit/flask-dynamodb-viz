@@ -35,7 +35,34 @@
                         <div id="collapse-{{table}}" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
                               <div ng-hide="tableDescriptions[table] == undefined">
-                                {{tableDescriptions[table]}}
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="table-global-data">
+                                            <div>Item count: {{tableDescriptions[table]["ItemCount"]}}</div>
+                                            <div>Table size in bytes: {{tableDescriptions[table]["TableSizeBytes"]}}</div>
+                                        </div></br>
+                                        <strong>Attribute definitions:</strong>
+                                        <div class="attribute-definitions" ng-show="tableDescriptions[table]['AttributeDefinitions'] != undefined && Object.keys(tableDescriptions[table]['AttributeDefinitions']).length != 0">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">Attribute name</th>
+                                                        <th scope="col">Attribute type</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">
+                                                        <td>{{attribute['AttributeName']}}</td>
+                                                        <td>{{attribute['AttributeType']}}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+
+                                    </div>
+                                </div>
                               </div>
                             </div>
                         </div>
