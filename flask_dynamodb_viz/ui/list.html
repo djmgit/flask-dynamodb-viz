@@ -36,12 +36,15 @@
                             <div class="card-body">
                               <div ng-hide="tableDescriptions[table] == undefined">
                                 <div class="row">
-                                    <div class="col-6">
+                                    <div class="col-6 table-data-rich">
                                         <div class="table-global-data">
                                             <div>Item count: {{tableDescriptions[table]["ItemCount"]}}</div>
                                             <div>Table size in bytes: {{tableDescriptions[table]["TableSizeBytes"]}}</div>
+                                            <div>Table status: {{tableDescriptions[table]["TableStatus"]}}</div>
+                                            <div>Read capacity units: {{tableDescriptions[table]["ProvisionedThroughput"]["ReadCapacityUnits"]}}</div>
+                                            <div>Write capacity units: {{tableDescriptions[table]["ProvisionedThroughput"]["WriteCapacityUnits"]}}</div>
                                         </div></br>
-                                        <strong>Attribute definitions:</strong>
+                                        <h5>Attribute definitions:</h5>
                                         <div class="attribute-definitions" ng-show="tableDescriptions[table]['AttributeDefinitions'] != undefined && Object.keys(tableDescriptions[table]['AttributeDefinitions']).length != 0">
                                             <table class="table">
                                                 <thead>
@@ -58,9 +61,44 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                        <hr>
+                                        <div class="global-indexes" ng-show="tableDescriptions[table]['GlobalSecondaryIndexes'] != undefined && Object.keys(tableDescriptions[table]['GlobalSecondaryIndexes']).length != 0">
+                                            <h5>
+                                                Global Index definitions:
+                                            </h5>
+                                            <div class="global-index" ng-repeat="globalIndex in tableDescriptions[table]['GlobalSecondaryIndexes']">
+                                                <strong>{{globalIndex["indexName"]}}</strong>
+                                                <div><strong>Index name: {{globalIndex["IndexName"]}}</strong></div>
+                                                <div>Index status: {{globalIndex["IndexStatus"]}}</div>
+                                                <div>Item count: {{globalIndex["ItemCount"]}}</div>
+                                                <div>Index size bytes: {{globalIndex["IndexSizeBytes"]}}</div>
+                                                <div>Read capacity units: {{globalIndex["ProvisionedThroughput"]["ReadCapacityUnits"]}}</div>
+                                                <div>Write capacity units: {{globalIndex["ProvisionedThroughput"]["WriteCapacityUnits"]}}</div>
+                                                </br>
+                                                <strong>Key schema:</strong>
+                                                <div class="global-index-keys" ng-show="globalIndex['KeySchema'] != undefined && Object.keys(globalIndex['KeySchema']).length != 0">
+                                                    <table class="table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col">Attribute name</th>
+                                                                <th scope="col">Key type</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr ng-repeat="attribute in globalIndex['KeySchema']">
+                                                                <td>{{attribute['AttributeName']}}</td>
+                                                                <td>{{attribute['KeyType']}}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-6">
-
+                                    <div class="col-6 table-data-json">
+                                        <div class="table-json">
+                                           <pre>{{tableDescriptionsPretty[table]}}</pre>
+                                        </div>
                                     </div>
                                 </div>
                               </div>
@@ -78,7 +116,8 @@
             $scope.tablesListLoaded = false;
             $scope.tablesListIsLoading = false;
             $scope.test="a";
-            $scope.tableDescriptions = {}
+            $scope.tableDescriptions = {};
+            $scope.tableDescriptionsPretty = {};
 
             $scope.getTablesList = function() {
                 $scope.tablesListIsLoading = true;
@@ -96,6 +135,7 @@
                 $http.get("/ddb_table/" + table + "/describe")
                     .then(function (response) {
                         $scope.tableDescriptions[table] = response.data["Table"];
+                        $scope.tableDescriptionsPretty[table] = JSON.stringify(response.data["Table"], null, 4);
                     });
             }
             $scope.getTablesList();
