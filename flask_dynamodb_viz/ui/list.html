@@ -26,13 +26,24 @@
                     <div ng-repeat="table in tables" class="card">
                         <div class="card-header" id="heading-{{table}}">
                             <h5 class="mb-0">
-                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}" aria-expanded="true" aria-controls="collapse-{{table}}">
-                                Collapsible {{table}}
+                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}-desc" aria-expanded="true" aria-controls="collapse-{{table}}-desc">
+                                Table: {{table}}
+                                </button>
+                            </h5>
+                            <h5 class="mb-0">
+                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}-record" aria-expanded="true" aria-controls="collapse-{{table}}-record">
+                                Show records
                                 </button>
                             </h5>
                         </div>
 
-                        <div id="collapse-{{table}}" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
+                        <div id="collapse-{{table}}-record" class="collapse" aria-labelledby="heading" data-parent="#accordion">
+                            <div class="card-body">
+                              Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+                            </div>
+                        </div>
+
+                        <div id="collapse-{{table}}-desc" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
                               <div ng-hide="tableDescriptions[table] == undefined">
                                 <div class="row">
@@ -118,6 +129,8 @@
             $scope.test="a";
             $scope.tableDescriptions = {};
             $scope.tableDescriptionsPretty = {};
+            $scope.tableLastEvaluatedKeys = {};
+            $scope.tableCurrentRecords = {};
 
             $scope.getTablesList = function() {
                 $scope.tablesListIsLoading = true;
@@ -129,13 +142,30 @@
             }
 
             $scope.getTableDescription = function(table) {
-                if (!$scope.tableDescriptions[table] == undefined) {
+                if (!$scope.tableDescriptions[table] === undefined) {
                     return;
                 }
                 $http.get("/ddb_table/" + table + "/describe")
                     .then(function (response) {
                         $scope.tableDescriptions[table] = response.data["Table"];
                         $scope.tableDescriptionsPretty[table] = JSON.stringify(response.data["Table"], null, 4);
+                    });
+            }
+            $scope.getTableRecordPage = async function(table) {
+                if (!$scope.tableDescriptions[table] !== undefined) {
+                    await $scope.getTableDescription(table);
+                }
+
+                let lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table];
+                if (lastEvaluatedKey === undefined) {
+                    lastEvaluatedKey = JSON.stringify({});
+                } else {
+                    lastEvaluatedKey = JSON.stringify(lastEvaluatedKey);
+                }
+                $http.get("/ddb_table/" + table + "/records/" + lastEvaluatedKey)
+                    .then(function (response) {
+                        $scope.tableCurrentRecords[table] = response.data["items"];
+                        $scope.tableLastEvaluatedKeys[table] = response.data["last_evaluated_key"];
                     });
             }
             $scope.getTablesList();
