@@ -2,3 +2,6 @@ testapp.py
 .venv
 __pycache__/
 *.pyc
+__pycache__
+Flask_DynamoDB_Viz.egg-info
+dist/
