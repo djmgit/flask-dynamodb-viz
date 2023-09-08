@@ -13,7 +13,7 @@ setup(
     license="",
     author="Deepjyoti Mondal",
     description="Dynamodb extension for Flask",
-    download_url="https://github.com/djmgit/flask-dynamodb-viz",
+    download_url="https://github.com/djmgit/flask-dynamodb-viz/archive/refs/tags/v0.0.1.tar.gz",
     long_description=__doc__,
     zip_safe=False,
     keywords = ["Flask", "Python", "Dynamodb", "AWS", "Extension", "Flask-Extension"],
