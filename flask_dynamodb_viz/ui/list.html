@@ -21,18 +21,50 @@
         </nav>
 
         <div class="container">
+            </br>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="filter-text" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" ng-model="filterText">
+            </div>
             <div class="list-of-tables">
                 <div id="accordion" ng-show="tablesListLoaded == true">
-                    <div ng-repeat="table in tables" class="card">
+                    <div ng-repeat="table in tables | filter:filterText" class="card">
                         <div class="card-header" id="heading-{{table}}">
                             <h5 class="mb-0">
-                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}" aria-expanded="true" aria-controls="collapse-{{table}}">
-                                Collapsible {{table}}
+                                <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}-desc" aria-expanded="true" aria-controls="collapse-{{table}}-desc">
+                                Table: {{table}}
+                                </button>
+                            </h5>
+                            <h5 class="mb-0">
+                                <button ng-click="getTableRecordPage(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}-record" aria-expanded="true" aria-controls="collapse-{{table}}-record">
+                                Show records
                                 </button>
                             </h5>
                         </div>
 
-                        <div id="collapse-{{table}}" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
+                        <div id="collapse-{{table}}-record" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
+                            <div class="card-body">
+                                <div ng-show="(tableCurrentRecords[table] !== undefined) && (tableCurrentRecords[table].length > 0)">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <td ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">{{attribute['AttributeName']}}</td>
+                                                <td>Other fields</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="record in tableCurrentRecords[table]">
+                                                <td ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">
+                                                    {{record[attribute["AttributeName"]]}}
+                                                </td>
+                                                <td><pre>{{getTableRecords(table, record);}}</pre></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="collapse-{{table}}-desc" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
                               <div ng-hide="tableDescriptions[table] == undefined">
                                 <div class="row">
@@ -115,9 +147,11 @@
         app.controller('table-list-ctrl', function ($scope, $http) {
             $scope.tablesListLoaded = false;
             $scope.tablesListIsLoading = false;
-            $scope.test="a";
             $scope.tableDescriptions = {};
             $scope.tableDescriptionsPretty = {};
+            $scope.tableLastEvaluatedKeys = {};
+            $scope.tablePreviousLastEvaluatedKeys = {};
+            $scope.tableCurrentRecords = {};
 
             $scope.getTablesList = function() {
                 $scope.tablesListIsLoading = true;
@@ -129,7 +163,7 @@
             }
 
             $scope.getTableDescription = function(table) {
-                if (!$scope.tableDescriptions[table] == undefined) {
+                if (!$scope.tableDescriptions[table] === undefined) {
                     return;
                 }
                 $http.get("/ddb_table/" + table + "/describe")
@@ -137,6 +171,42 @@
                         $scope.tableDescriptions[table] = response.data["Table"];
                         $scope.tableDescriptionsPretty[table] = JSON.stringify(response.data["Table"], null, 4);
                     });
+            }
+            $scope.getTableRecordPage = async function(table) {
+                if ($scope.tableDescriptions[table] === undefined) {
+                    await $scope.getTableDescription(table);
+                }
+
+                if ($scope.tableCurrentRecords[table] !== undefined) {
+                    return;
+                }
+
+                let lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table];
+                if (lastEvaluatedKey === undefined) {
+                    lastEvaluatedKey = JSON.stringify({});
+                } else {
+                    lastEvaluatedKey = JSON.stringify(lastEvaluatedKey);
+                }
+                $http.get("/ddb_table/" + table + "/records/" + lastEvaluatedKey)
+                    .then(function (response) {
+                        $scope.tableCurrentRecords[table] = response.data["items"];
+                        $scope.tableLastEvaluatedKeys[table] = response.data["last_evaluated_key"];
+                        $scope.tablePreviousLastEvaluatedKeys[table] = lastEvaluatedKey;
+                    });
+            }
+
+            $scope.getTableRecords = function(table, record) {
+                let knownAttributes = [];
+                $scope.tableDescriptions[table]["AttributeDefinitions"].forEach(item => {
+                    knownAttributes.push(item["AttributeName"]);
+                });
+                let otherFields = {};
+                Object.keys(record).forEach(function(index, item) {
+                    if (knownAttributes.indexOf(item) === -1) {
+                        otherFields[item] = record[item];
+                    }
+                });
+                return JSON.stringify(otherFields);
             }
             $scope.getTablesList();
         });
