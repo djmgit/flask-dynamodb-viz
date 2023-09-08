@@ -21,9 +21,13 @@
         </nav>
 
         <div class="container">
+            </br>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="filter-text" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" ng-model="filterText">
+            </div>
             <div class="list-of-tables">
                 <div id="accordion" ng-show="tablesListLoaded == true">
-                    <div ng-repeat="table in tables" class="card">
+                    <div ng-repeat="table in tables | filter:filterText" class="card">
                         <div class="card-header" id="heading-{{table}}">
                             <h5 class="mb-0">
                                 <button ng-click="getTableDescription(table)" class="btn btn-link" data-toggle="collapse" data-target="#collapse-{{table}}-desc" aria-expanded="true" aria-controls="collapse-{{table}}-desc">
@@ -39,7 +43,7 @@
 
                         <div id="collapse-{{table}}-record" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
-                                <div ng-hide="tableCurrentRecords[table] == undefined">
+                                <div ng-show="(tableCurrentRecords[table] !== undefined) && (tableCurrentRecords[table].length > 0)">
                                     <table class="table">
                                         <thead>
                                             <tr>
