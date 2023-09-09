@@ -9,3 +9,9 @@
     max-height: 750px;
     overflow: auto;
 }
+
+.table-records {
+    height: fit-content;
+    max-height: 750px;
+    overflow: auto;
+}

@@ -23,7 +23,7 @@
         <div class="container">
             </br>
             <div class="input-group mb-3">
-                <input type="text" class="form-control" id="filter-text" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" ng-model="filterText">
+                <input type="text" class="form-control" id="filter-text" placeholder="Start typing to filter by table name ..." aria-label="Username" aria-describedby="basic-addon1" ng-model="filterText">
             </div>
             <div class="list-of-tables">
                 <div id="accordion" ng-show="tablesListLoaded == true">
@@ -43,16 +43,18 @@
 
                         <div id="collapse-{{table}}-record" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
-                                <div ng-show="(tableCurrentRecords[table] !== undefined) && (tableCurrentRecords[table].length > 0)">
+                                <div class="table-records" ng-show="(tableCurrentRecords[table] !== undefined) && (tableCurrentRecords[table].length > 0)">
                                     <table class="table">
                                         <thead>
                                             <tr>
+                                                <td>Sl No.</td>
                                                 <td ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">{{attribute['AttributeName']}}</td>
                                                 <td>Other fields</td>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr ng-repeat="record in tableCurrentRecords[table]">
+                                                <td>{{$index + 1}}</td>
                                                 <td ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">
                                                     {{record[attribute["AttributeName"]]}}
                                                 </td>
@@ -201,12 +203,12 @@
                     knownAttributes.push(item["AttributeName"]);
                 });
                 let otherFields = {};
-                Object.keys(record).forEach(function(index, item) {
+                Object.keys(record).forEach(function(item, index) {
                     if (knownAttributes.indexOf(item) === -1) {
                         otherFields[item] = record[item];
                     }
                 });
-                return JSON.stringify(otherFields);
+                return JSON.stringify(otherFields, null, 4);
             }
             $scope.getTablesList();
         });
