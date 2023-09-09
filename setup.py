@@ -13,7 +13,7 @@ setup(
     license="",
     author="Deepjyoti Mondal",
     description="Dynamodb extension for Flask",
-    download_url="https://github.com/djmgit/flask-dynamodb-viz/archive/refs/tags/v0.0.5.tar.gz",
+    download_url="https://github.com/djmgit/flask-dynamodb-viz/archive/refs/tags/v0.0.6.tar.gz",
     long_description_content_type="text/markdown",
     long_description=__doc__,
     zip_safe=False,
@@ -25,6 +25,7 @@ setup(
         "boto3==1.26.10",
         "pydantic==1.10.2"
     ],
+    include_package_data=True,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -32,5 +33,5 @@ setup(
         'Programming Language :: Python',
         'Topic :: System :: Monitoring',
     ],
-    version='0.0.5'
+    version='0.0.6'
 )
