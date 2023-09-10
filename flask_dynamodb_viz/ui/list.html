@@ -44,6 +44,18 @@
                         <div id="collapse-{{table}}-record" class="collapse" aria-labelledby="heading-{{table}}" data-parent="#accordion">
                             <div class="card-body">
                                 <div class="table-records" ng-show="(tableCurrentRecords[table] !== undefined) && (tableCurrentRecords[table].length > 0)">
+                                    <div class="pagination">
+                                        <nav aria-label="...">
+                                            <ul class="pagination">
+                                              <li class="page-item {{checkPrevPaginate(table)}}">
+                                                <a class="page-link" href="" tabindex="-1" ng-click="paginateTable(table, false, true)">Previous</a>
+                                              </li>
+                                              <li class="page-item {{checkNextPaginate(table)}}">
+                                                <a class="page-link" href="" ng-click="paginateTable(table, true, false)">Next</a>
+                                              </li>
+                                            </ul>
+                                        </nav>
+                                    </div>
                                     <table class="table">
                                         <thead>
                                             <tr>
@@ -58,7 +70,7 @@
                                                 <td ng-repeat="attribute in tableDescriptions[table]['AttributeDefinitions']">
                                                     {{record[attribute["AttributeName"]]}}
                                                 </td>
-                                                <td><pre>{{getTableRecords(table, record);}}</pre></td>
+                                                <td><pre>{{getTableOtherFields(table, record);}}</pre></td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -152,7 +164,7 @@
             $scope.tableDescriptions = {};
             $scope.tableDescriptionsPretty = {};
             $scope.tableLastEvaluatedKeys = {};
-            $scope.tablePreviousLastEvaluatedKeys = {};
+            //$scope.tablePreviousLastEvaluatedKeys = {};
             $scope.tableCurrentRecords = {};
 
             $scope.getTablesList = function() {
@@ -185,19 +197,43 @@
 
                 let lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table];
                 if (lastEvaluatedKey === undefined) {
+                    $scope.tableLastEvaluatedKeys[table] = [{}]
                     lastEvaluatedKey = JSON.stringify({});
                 } else {
-                    lastEvaluatedKey = JSON.stringify(lastEvaluatedKey);
+                    lastEvaluatedKey = JSON.stringify(lastEvaluatedKey[0]);
                 }
                 $http.get("/ddb_table/" + table + "/records/" + lastEvaluatedKey)
                     .then(function (response) {
                         $scope.tableCurrentRecords[table] = response.data["items"];
-                        $scope.tableLastEvaluatedKeys[table] = response.data["last_evaluated_key"];
-                        $scope.tablePreviousLastEvaluatedKeys[table] = lastEvaluatedKey;
+                        $scope.tableLastEvaluatedKeys[table].push(response.data["last_evaluated_key"]);
                     });
             }
 
-            $scope.getTableRecords = function(table, record) {
+            $scope.paginateTable = function(table, next, prev) {
+                let lastEvaluatedKey = "";
+                if (next === true) {
+                    lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table][$scope.tableLastEvaluatedKeys[table].length-1];
+                } else if (prev === true) {
+                    lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table][$scope.tableLastEvaluatedKeys[table].length-3];
+                    $scope.tableLastEvaluatedKeys[table].pop();
+                    $scope.tableLastEvaluatedKeys[table].pop();
+                }
+
+                lastEvaluatedKey = JSON.stringify(lastEvaluatedKey);
+                $http.get("/ddb_table/" + table + "/records/" + lastEvaluatedKey)
+                    .then(function (response) {
+                        let records = response.data["items"];
+                        if (records.length > 0) {
+                            $scope.tableCurrentRecords[table] = response.data["items"];
+                            $scope.tableLastEvaluatedKeys[table].push(response.data["last_evaluated_key"]);
+                        } else {
+                            $scope.tableLastEvaluatedKeys[table].pop();
+                            $scope.tableLastEvaluatedKeys[table].push("");
+                        }
+                    });
+            }
+
+            $scope.getTableOtherFields = function(table, record) {
                 let knownAttributes = [];
                 $scope.tableDescriptions[table]["AttributeDefinitions"].forEach(item => {
                     knownAttributes.push(item["AttributeName"]);
@@ -209,6 +245,33 @@
                     }
                 });
                 return JSON.stringify(otherFields, null, 4);
+            }
+
+            $scope.checkNextPaginate = function(table) {
+                if ($scope.tableLastEvaluatedKeys[table] === undefined || $scope.tableLastEvaluatedKeys[table].length === 0) {
+                    return "disabled";
+                }
+                let lastEvaluatedKey = $scope.tableLastEvaluatedKeys[table][$scope.tableLastEvaluatedKeys[table].length-1];
+                if (lastEvaluatedKey === "" || JSON.stringify(lastEvaluatedKey) == '{}') {
+                    return "disabled";
+                }
+                return '';
+            }
+
+            $scope.checkPrevPaginate = function(table) {
+                if ($scope.tableLastEvaluatedKeys[table] === undefined) {
+                    return "disabled";
+                }
+                if ($scope.tableLastEvaluatedKeys[table].length < 3) {
+                    return "disabled";
+                }
+                return '';
+            }
+            $scope.ts = function(a) {
+                if (a==1) {
+                    return true;
+                }
+                return false;
             }
             $scope.getTablesList();
         });

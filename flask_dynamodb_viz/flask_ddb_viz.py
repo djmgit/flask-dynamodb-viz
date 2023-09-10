@@ -40,6 +40,7 @@ class FlaskDDBVizConfig(BaseModel):
     ddb_resource: Any
     ddb_client: Any
     allowed_tables: Optional[List[str]] = None
+    list_tables_from_ddb: bool = True
 
 def _big_scan(table: DDBTableInterface):
         scan_result = []
@@ -66,10 +67,11 @@ def _get_all(table: DDBTableInterface):
 
 def _scan_page(table_name: str, last_evaluated_key: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
-    ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
-    table_names = [table.name for table in ddb_tables]
-    if table_name not in table_names:
-        return {"error": "Table does not exist"}, 404
+    if flask_ddb_viz_config.list_tables_from_ddb:
+        ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
+        table_names = [table.name for table in ddb_tables]
+        if table_name not in table_names:
+            return {"error": "Table does not exist"}, 404
 
     allowed_tables = flask_ddb_viz_config.allowed_tables
     if allowed_tables and table_name not in allowed_tables:
@@ -93,10 +95,11 @@ def _scan_page(table_name: str, last_evaluated_key: str, flask_ddb_viz_config: F
 
 def _show_table_view(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
-    ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
-    table_names = [table.name for table in ddb_tables]
-    if table_name not in table_names:
-        return {"error": "Table does not exist"}, 404
+    if flask_ddb_viz_config.list_tables_from_ddb:
+        ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
+        table_names = [table.name for table in ddb_tables]
+        if table_name not in table_names:
+            return {"error": "Table does not exist"}, 404
     allowed_tables = flask_ddb_viz_config.allowed_tables
     if allowed_tables and table_name not in allowed_tables:
         return {"error": "Table cannot be shown"}, 403
@@ -111,13 +114,17 @@ def _show_table_view(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
             "table_size_bytes": table_description.TableSizeBytes}, 200
 
 def _list_tables(flask_ddb_viz_config: FlaskDDBVizConfig):
-    ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
-    ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
-    tables_names = [table.name for table in ddb_tables]
-    allowed_tables = flask_ddb_viz_config.allowed_tables
-    ddb_tables = ddb_tables if not allowed_tables else list(filter(lambda table: table in allowed_tables, ddb_tables))
+    tables_to_list = []
+    if flask_ddb_viz_config.list_tables_from_ddb:
+        ddb_resource: DDBResourceInterface = flask_ddb_viz_config.ddb_resource
+        ddb_tables: List[DDBResourceInterface.Table] = ddb_resource.tables.all()
+        tables_names = [table.name for table in ddb_tables]
+        allowed_tables = flask_ddb_viz_config.allowed_tables
+        tables_to_list = tables_names if not allowed_tables else list(filter(lambda table: table in allowed_tables, tables_names))
+    else:
+        tables_to_list = flask_ddb_viz_config.allowed_tables
 
-    return {"items_count": len(tables_names), "tables": tables_names}, 200
+    return {"items_count": len(tables_to_list), "tables": tables_to_list}, 200
 
 def _describe_table(table_name: str, flask_ddb_viz_config: FlaskDDBVizConfig):
     ddb_client: DDBClientInterface = flask_ddb_viz_config.ddb_client
